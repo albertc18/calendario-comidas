@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MealPlanner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       HEADER
+  ═══════════════════════════════════════════ -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="14" cy="14" r="13" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 10c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v2H8v-2Z" fill="currentColor" opacity=".3"/>
+          <rect x="8" y="12" width="12" height="8" rx="1" fill="currentColor" opacity=".15"/>
+          <path d="M11 16h6M11 19h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        <span class="logo-text">MealPlanner</span>
+      </div>
+      <nav class="header-nav">
+        <button class="nav-btn active" data-view="menu">
+          <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="3" width="7" height="7" rx="1.5" fill="currentColor" opacity=".5"/><rect x="11" y="3" width="7" height="7" rx="1.5" fill="currentColor" opacity=".5"/><rect x="2" y="12" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="11" y="12" width="7" height="7" rx="1.5" fill="currentColor" opacity=".3"/></svg>
+          <span>Menú</span>
+        </button>
+        <button class="nav-btn" data-view="recetas">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M4 4h12v2H4zM4 9h8v2H4zM4 14h6v2H4z" fill="currentColor"/><circle cx="15" cy="15" r="3" fill="currentColor" opacity=".5"/><path d="M13.5 15h3M15 13.5v3" stroke="white" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <span>Recetas</span>
+        </button>
+        <button class="nav-btn" data-view="lista">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M3 5h14M3 10h14M3 15h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="16" cy="15" r="3" fill="currentColor" opacity=".5"/><path d="M14.5 15l1 1 2-1.5" stroke="white" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Lista</span>
+          <span class="badge" id="lista-badge" style="display:none">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════
+       MAIN
+  ═══════════════════════════════════════════ -->
+  <main class="app-main">
+
+    <!-- ─── SEMANA SELECTOR (visible en menú) ─── -->
+    <div class="week-selector-bar" id="week-bar">
+      <div class="week-selector-inner">
+        <span class="week-label">Semana activa</span>
+        <div class="week-tabs">
+          <button class="week-tab active" data-week="1">Sem. 1</button>
+          <button class="week-tab" data-week="2">Sem. 2</button>
+          <button class="week-tab" data-week="3">Sem. 3</button>
+          <button class="week-tab" data-week="4">Sem. 4</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         VIEW: MENÚ SEMANAL
+    ══════════════════════════════ -->
+    <section class="view active" id="view-menu">
+      <div class="section-header">
+        <h1 class="section-title">Menú Semanal</h1>
+      </div>
+      <div class="week-grid" id="week-grid">
+        <!-- Generado por JS -->
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════
+         VIEW: RECETAS
+    ══════════════════════════════ -->
+    <section class="view" id="view-recetas">
+      <div class="section-header">
+        <h1 class="section-title">Recetas</h1>
+        <button class="btn-primary" id="btn-nueva-receta">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Nueva receta
+        </button>
+      </div>
+
+      <!-- Búsqueda de recetas -->
+      <div class="search-bar">
+        <svg class="search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input type="text" id="receta-search" placeholder="Buscar receta..." />
+      </div>
+
+      <div class="recipes-grid" id="recipes-grid">
+        <!-- Generado por JS -->
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════
+         VIEW: LISTA DE LA COMPRA
+    ══════════════════════════════ -->
+    <section class="view" id="view-lista">
+      <div class="section-header">
+        <h1 class="section-title">Lista de la Compra</h1>
+      </div>
+
+      <!-- Añadir producto -->
+      <div class="add-item-row">
+        <input type="text" id="nuevo-producto" placeholder="Añadir producto..." />
+        <button class="btn-add-circle" id="btn-add-producto" aria-label="Añadir">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <!-- Cargar ingredientes -->
+      <button class="btn-cargar-semana" id="btn-cargar-semana">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M4 10a6 6 0 0 1 6-6 6 6 0 0 1 5.66 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16 4v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 10a6 6 0 0 1-6 6 6 6 0 0 1-5.66-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Cargar ingredientes de la semana activa
+      </button>
+
+      <!-- Pendientes -->
+      <div class="list-section">
+        <div class="list-section-header">
+          <h3>Pendientes <span class="counter-chip" id="pendientes-count">0</span></h3>
+        </div>
+        <div class="list-items" id="list-pendientes">
+          <!-- Items generados por JS -->
+        </div>
+        <p class="empty-hint" id="pendientes-empty" style="display:none">
+          No hay productos pendientes. ¡A disfrutar! 🎉
+        </p>
+      </div>
+
+      <!-- En el carrito -->
+      <div class="list-section">
+        <div class="list-section-header">
+          <h3>En el carrito <span class="counter-chip muted" id="carrito-count">0</span></h3>
+          <button class="btn-vaciar" id="btn-vaciar">
+            <svg viewBox="0 0 20 20" fill="none"><path d="M5 6h10l-1 10H6L5 6z" stroke="currentColor" stroke-width="1.3"/><path d="M3 6h14M8 6V4h4v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Vaciar lista
+          </button>
+        </div>
+        <div class="list-items" id="list-carrito">
+          <!-- Items generados por JS -->
+        </div>
+        <p class="empty-hint" id="carrito-empty" style="display:none">
+          El carrito está vacío.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════
+       MODAL: SELECCIONAR RECETA PARA EL MENÚ
+  ═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-select-recipe" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Elegir plato</h2>
+        <button class="modal-close" id="close-select-recipe" aria-label="Cerrar">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="modal-search">
+        <svg class="search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input type="text" id="modal-recipe-search" placeholder="Buscar receta..."/>
+      </div>
+      <div class="modal-recipe-list" id="modal-recipe-list">
+        <!-- Generado por JS -->
+      </div>
+      <button class="btn-text-danger" id="btn-clear-slot">
+        <svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Quitar plato
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       MODAL: NUEVA / EDITAR RECETA
+  ═══════════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-recipe-form" style="display:none">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h2 id="recipe-form-title">Nueva receta</h2>
+        <button class="modal-close" id="close-recipe-form" aria-label="Cerrar">
+          <svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="recipe-id"/>
+        <div class="form-group">
+          <label for="recipe-name">Nombre del plato</label>
+          <input type="text" id="recipe-name" placeholder="Ej: Pastel de zanahoria sin gluten"/>
+        </div>
+        <div class="form-group">
+          <label>Ingredientes</label>
+          <div class="ingredients-add-row">
+            <input type="text" id="ingredient-input" placeholder="Ej: Zanahorias, 300g"/>
+            <button class="btn-add-small" id="btn-add-ingredient" aria-label="Añadir ingrediente">
+              <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <div class="ingredients-list" id="ingredients-list">
+            <!-- Tags de ingredientes generados por JS -->
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="recipe-notes">Notas (opcional)</label>
+          <textarea id="recipe-notes" placeholder="Pasos, consejos, tiempo de cocción..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btn-cancel-recipe">Cancelar</button>
+        <button class="btn-primary" id="btn-save-recipe">Guardar receta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       TOAST NOTIFICACIÓN
+  ═══════════════════════════════════════════ -->
+  <div class="toast" id="toast" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
