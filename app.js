@@ -24,9 +24,9 @@
       - shopping_list(id uuid PK, name text, done bool default false, created_at timestamptz)
 ═══════════════════════════════════════════════════ */
 
-const SUPABASE_URL    = 'https://TU_PROYECTO.supabase.co';   // ← reemplaza
-const SUPABASE_ANON_KEY = 'TU_ANON_KEY';                     // ← reemplaza
-const USE_SUPABASE    = false;                                // ← cambia a true cuando estés listo
+const SUPABASE_URL    = 'https://nbcswsaqppckctwdeshy.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_551ADf1W4l-2gtYghayKXw_f01ZDvEj';
+const USE_SUPABASE    = true;
 
 // El cliente se inicializa dentro de init() para garantizar que el SDK ya está cargado
 let supabase = null;
