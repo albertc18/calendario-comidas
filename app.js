@@ -24,15 +24,12 @@
       - shopping_list(id uuid PK, name text, done bool default false, created_at timestamptz)
 ═══════════════════════════════════════════════════ */
 
-const SUPABASE_URL    = 'https://TU_PROYECTO.supabase.co';   // ← reemplaza
-const SUPABASE_ANON_KEY = 'TU_ANON_KEY';                     // ← reemplaza
-const USE_SUPABASE    = false;                                // ← cambia a true cuando estés listo
+const SUPABASE_URL    = 'https://nbcswsaqppckctwdeshy.supabase.co';   // ← reemplaza
+const SUPABASE_ANON_KEY = 'sb_publishable_551ADf1W4l-2gtYghayKXw_f01ZDvEj';                     // ← reemplaza
+const USE_SUPABASE    = true;                                // ← cambia a true cuando estés listo
 
-// Inicialización del cliente (se activa solo si USE_SUPABASE = true)
+// El client s'inicialitza dins de init() per garantir que el SDK ja està carregat
 let supabase = null;
-if (USE_SUPABASE && typeof window.supabase !== 'undefined') {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
 
 /* ═══════════════════════════════════════════════════
    SECCIÓN 1 — CAPA DE BASE DE DATOS
@@ -138,13 +135,35 @@ async function getMenuItems(week) {
  */
 async function setMenuItemInDB(item) {
   if (USE_SUPABASE) {
-    // Upsert: si ya existe ese (week, day, meal_type) lo reemplaza
-    const { data, error } = await supabase
+    // Busquem si ja existeix un registre per a aquest slot
+    const { data: existing, error: fetchErr } = await supabase
       .from('menu_items')
-      .upsert([item], { onConflict: 'week,day,meal_type' })
-      .select().single();
-    if (error) throw error;
-    return data;
+      .select('id')
+      .eq('week',      item.week)
+      .eq('day',       item.day)
+      .eq('meal_type', item.meal_type)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+
+    if (existing) {
+      // Ja existeix → actualitzem el recipe_id
+      const { error } = await supabase
+        .from('menu_items')
+        .update({ recipe_id: item.recipe_id })
+        .eq('id', existing.id);
+      if (error) throw error;
+      return { ...item, id: existing.id };
+    } else {
+      // No existeix → insertem nou
+      const { data, error } = await supabase
+        .from('menu_items')
+        .insert([item])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
   }
   const key  = `mp_menu_w${item.week}`;
   const list = LS.get(key, []);
@@ -801,6 +820,12 @@ async function switchWeek(week) {
 ═══════════════════════════════════════════════════ */
 
 async function init() {
+  // Inicialitzar Supabase aquí per garantir que el SDK ja està carregat
+  if (USE_SUPABASE) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase connectat');
+  }
+
   try {
     // Cargar datos iniciales en paralelo
     const [recipes, menuItems, shoppingList] = await Promise.all([
@@ -878,7 +903,7 @@ async function init() {
   });
 
   // ── Datos de muestra si la app está vacía ──────────────────
-  if (AppState.recipes.length === 0) loadSampleData();
+  if (!USE_SUPABASE && AppState.recipes.length === 0) loadSampleData();
 }
 
 /* ═══════════════════════════════════════════════════
