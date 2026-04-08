@@ -820,14 +820,19 @@ async function switchWeek(week) {
 ═══════════════════════════════════════════════════ */
 
 async function init() {
-  // Inicialitzar Supabase aquí per garantir que el SDK ja està carregat
+  // ── Inicialitzar Supabase de forma segura ──────────────────
   if (USE_SUPABASE) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase connectat');
+    if (typeof window.supabase === 'undefined') {
+      console.error('❌ SDK de Supabase no carregat. Comprova el <script> a index.html');
+      // Continuem amb localStorage com a fallback
+    } else {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('✅ Supabase connectat a:', SUPABASE_URL);
+    }
   }
 
+  // ── Carregar dades ─────────────────────────────────────────
   try {
-    // Cargar datos iniciales en paralelo
     const [recipes, menuItems, shoppingList] = await Promise.all([
       getRecipes(),
       getMenuItems(AppState.activeWeek),
@@ -836,8 +841,9 @@ async function init() {
     AppState.recipes      = recipes;
     AppState.menuItems    = menuItems;
     AppState.shoppingList = shoppingList;
+    console.log('✅ Dades carregades:', { recipes: recipes.length, menuItems: menuItems.length, shoppingList: shoppingList.length });
   } catch (e) {
-    console.error('Error al inicializar datos:', e);
+    console.error('❌ Error al carregar dades:', e);
   }
 
   // Render inicial
