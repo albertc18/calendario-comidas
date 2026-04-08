@@ -25,7 +25,7 @@
 ═══════════════════════════════════════════════════ */
 
 const SUPABASE_URL    = 'https://nbcswsaqppckctwdeshy.supabase.co';   // ← reemplaza
-const SUPABASE_ANON_KEY = 'sb_publishable_551ADf1W4l-2gtYghayKXw_f01ZDvEj';                     // ← reemplaza
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iY3N3c2FxcHBja2N0d2Rlc2h5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjIwNTgsImV4cCI6MjA5MDY5ODA1OH0.-2JVxBb1wbypEpr_Y_TbCaHQkF8ayYpQL7_uI2l2Gr0';                     // ← reemplaza
 const USE_SUPABASE    = true;                                // ← cambia a true cuando estés listo
 
 // El client s'inicialitza dins de init() per garantir que el SDK ja està carregat
