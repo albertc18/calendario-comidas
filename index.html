@@ -12,9 +12,66 @@
 <body>
 
   <!-- ═══════════════════════════════════════════
+       AUTH SCREEN
+  ═══════════════════════════════════════════ -->
+  <div class="auth-screen" id="auth-screen">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="14" cy="14" r="13" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M8 10c0-1.1.9-2 2-2h8a2 2 0 0 1 2 2v2H8v-2Z" fill="currentColor" opacity=".3"/>
+          <rect x="8" y="12" width="12" height="8" rx="1" fill="currentColor" opacity=".15"/>
+          <path d="M11 16h6M11 19h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        <span class="logo-text">MealPlanner</span>
+      </div>
+
+      <h2 class="auth-title" id="auth-title">Inicia sesión</h2>
+      <p class="auth-subtitle" id="auth-subtitle">Accede a tu planificador de comidas</p>
+
+      <!-- Mensaje de confirmación email -->
+      <div class="auth-message" id="auth-message" style="display:none"></div>
+
+      <!-- Formulario email/password -->
+      <div class="auth-form" id="auth-form">
+        <div class="form-group">
+          <label for="auth-email">Correo electrónico</label>
+          <input type="email" id="auth-email" placeholder="tu@email.com" autocomplete="email"/>
+        </div>
+        <div class="form-group">
+          <label for="auth-password">Contraseña</label>
+          <input type="password" id="auth-password" placeholder="Mínimo 6 caracteres" autocomplete="current-password"/>
+        </div>
+        <button class="btn-primary auth-submit" id="btn-auth-submit">Iniciar sesión</button>
+      </div>
+
+      <div class="auth-divider">
+        <span>o</span>
+      </div>
+
+      <!-- Google -->
+      <button class="btn-google" id="btn-google">
+        <svg viewBox="0 0 24 24" width="18" height="18">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Continuar con Google
+      </button>
+
+      <!-- Toggle login/register -->
+      <p class="auth-toggle">
+        <span id="auth-toggle-text">¿No tienes cuenta?</span>
+        <button id="btn-auth-toggle">Regístrate</button>
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
        HEADER
   ═══════════════════════════════════════════ -->
-  <header class="app-header">
+  <header class="app-header" id="app-header" style="display:none">
     <div class="header-inner">
       <div class="logo">
         <svg class="logo-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -39,14 +96,27 @@
           <span>Lista</span>
           <span class="badge" id="lista-badge" style="display:none">0</span>
         </button>
+        <!-- User menu -->
+        <button class="nav-btn nav-btn-user" id="btn-user-menu" aria-label="Usuario">
+          <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.4"/><path d="M3 17.5c0-3.04 3.13-5.5 7-5.5s7 2.46 7 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </button>
       </nav>
     </div>
   </header>
 
+  <!-- User dropdown -->
+  <div class="user-dropdown" id="user-dropdown" style="display:none">
+    <div class="user-dropdown-email" id="user-email">usuario@email.com</div>
+    <button class="user-dropdown-btn" id="btn-logout">
+      <svg viewBox="0 0 16 16" fill="none"><path d="M6 2H3v12h3M11 4l4 4-4 4M7 8h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Cerrar sesión
+    </button>
+  </div>
+
   <!-- ═══════════════════════════════════════════
        MAIN
   ═══════════════════════════════════════════ -->
-  <main class="app-main">
+  <main class="app-main" id="app-main" style="display:none">
 
     <!-- ─── SEMANA SELECTOR (visible en menú) ─── -->
     <div class="week-selector-bar" id="week-bar">
@@ -68,9 +138,7 @@
       <div class="section-header">
         <h1 class="section-title">Menú Semanal</h1>
       </div>
-      <div class="week-grid" id="week-grid">
-        <!-- Generado por JS -->
-      </div>
+      <div class="week-grid" id="week-grid"></div>
     </section>
 
     <!-- ══════════════════════════════
@@ -84,16 +152,11 @@
           Nueva receta
         </button>
       </div>
-
-      <!-- Búsqueda de recetas -->
       <div class="search-bar">
         <svg class="search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         <input type="text" id="receta-search" placeholder="Buscar receta..." />
       </div>
-
-      <div class="recipes-grid" id="recipes-grid">
-        <!-- Generado por JS -->
-      </div>
+      <div class="recipes-grid" id="recipes-grid"></div>
     </section>
 
     <!-- ══════════════════════════════
@@ -103,35 +166,23 @@
       <div class="section-header">
         <h1 class="section-title">Lista de la Compra</h1>
       </div>
-
-      <!-- Añadir producto -->
       <div class="add-item-row">
         <input type="text" id="nuevo-producto" placeholder="Añadir producto..." />
         <button class="btn-add-circle" id="btn-add-producto" aria-label="Añadir">
           <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
         </button>
       </div>
-
-      <!-- Cargar ingredientes -->
       <button class="btn-cargar-semana" id="btn-cargar-semana">
         <svg viewBox="0 0 20 20" fill="none"><path d="M4 10a6 6 0 0 1 6-6 6 6 0 0 1 5.66 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16 4v4h-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 10a6 6 0 0 1-6 6 6 6 0 0 1-5.66-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         Cargar ingredientes de la semana activa
       </button>
-
-      <!-- Pendientes -->
       <div class="list-section">
         <div class="list-section-header">
           <h3>Pendientes <span class="counter-chip" id="pendientes-count">0</span></h3>
         </div>
-        <div class="list-items" id="list-pendientes">
-          <!-- Items generados por JS -->
-        </div>
-        <p class="empty-hint" id="pendientes-empty" style="display:none">
-          No hay productos pendientes. ¡A disfrutar! 🎉
-        </p>
+        <div class="list-items" id="list-pendientes"></div>
+        <p class="empty-hint" id="pendientes-empty" style="display:none">No hay productos pendientes. ¡A disfrutar! 🎉</p>
       </div>
-
-      <!-- En el carrito -->
       <div class="list-section">
         <div class="list-section-header">
           <h3>En el carrito <span class="counter-chip muted" id="carrito-count">0</span></h3>
@@ -140,12 +191,8 @@
             Vaciar lista
           </button>
         </div>
-        <div class="list-items" id="list-carrito">
-          <!-- Items generados por JS -->
-        </div>
-        <p class="empty-hint" id="carrito-empty" style="display:none">
-          El carrito está vacío.
-        </p>
+        <div class="list-items" id="list-carrito"></div>
+        <p class="empty-hint" id="carrito-empty" style="display:none">El carrito está vacío.</p>
       </div>
     </section>
 
@@ -166,9 +213,7 @@
         <svg class="search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         <input type="text" id="modal-recipe-search" placeholder="Buscar receta..."/>
       </div>
-      <div class="modal-recipe-list" id="modal-recipe-list">
-        <!-- Generado por JS -->
-      </div>
+      <div class="modal-recipe-list" id="modal-recipe-list"></div>
       <button class="btn-text-danger" id="btn-clear-slot">
         <svg viewBox="0 0 20 20" fill="none"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         Quitar plato
@@ -201,9 +246,7 @@
               <svg viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
           </div>
-          <div class="ingredients-list" id="ingredients-list">
-            <!-- Tags de ingredientes generados por JS -->
-          </div>
+          <div class="ingredients-list" id="ingredients-list"></div>
         </div>
         <div class="form-group">
           <label for="recipe-notes">Notas (opcional)</label>
@@ -217,9 +260,7 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════
-       TOAST NOTIFICACIÓN
-  ═══════════════════════════════════════════ -->
+  <!-- TOAST -->
   <div class="toast" id="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>

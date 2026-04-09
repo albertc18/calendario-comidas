@@ -1,48 +1,128 @@
 /* ═══════════════════════════════════════════════════════════════
-   MEALPLANNER — app.js
-   ─────────────────────────────────────────────────────────────
-   Arquitectura:
-   ① Capa DB → funciones async que puedes reemplazar con Supabase
-   ② Capa Estado (AppState) → fuente única de verdad en memoria
-   ③ Capa Render → funciones que pintan el DOM desde el estado
-   ④ Capa Eventos → listeners que llaman a DB → actualizan estado → renderizan
+   MEALPLANNER — app.js  (con autenticación Supabase)
 ═══════════════════════════════════════════════════════════════ */
 
 'use strict';
 
 /* ═══════════════════════════════════════════════════
    SECCIÓN 0 — CONFIGURACIÓN SUPABASE
-   ═══════════════════════════════════════════════════
-   Cuando tengas tu proyecto Supabase listo:
-   1. Instala: <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.js"></script>
-      (añade en index.html ANTES de este script)
-   2. Rellena las dos constantes de abajo con tus credenciales
-   3. Cambia USE_SUPABASE a true
-   4. Las tablas necesarias en Supabase:
-      - recipes      (id uuid PK, name text, ingredients jsonb[], notes text, created_at timestamptz)
-      - menu_items   (id uuid PK, week int, day text, meal_type text, recipe_id uuid FK->recipes, created_at timestamptz)
-      - shopping_list(id uuid PK, name text, done bool default false, created_at timestamptz)
 ═══════════════════════════════════════════════════ */
 
-const SUPABASE_URL    = 'https://nbcswsaqppckctwdeshy.supabase.co';   // ← reemplaza
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iY3N3c2FxcHBja2N0d2Rlc2h5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjIwNTgsImV4cCI6MjA5MDY5ODA1OH0.-2JVxBb1wbypEpr_Y_TbCaHQkF8ayYpQL7_uI2l2Gr0';                     // ← reemplaza
-const USE_SUPABASE    = true;                                // ← cambia a true cuando estés listo
+const SUPABASE_URL      = 'https://nbcswsaqppckctwdeshy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iY3N3c2FxcHBja2N0d2Rlc2h5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMjIwNTgsImV4cCI6MjA5MDY5ODA1OH0.-2JVxBb1wbypEpr_Y_TbCaHQkF8ayYpQL7_uI2l2Gr0';
 
-// Inicialización del cliente (se activa solo si USE_SUPABASE = true)
 let sb = null;
-if (USE_SUPABASE && typeof window.supabase !== 'undefined') {
+if (typeof window.supabase !== 'undefined') {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 /* ═══════════════════════════════════════════════════
-   SECCIÓN 1 — CAPA DE BASE DE DATOS
-   ═══════════════════════════════════════════════════
-   Cada función tiene dos ramas:
-   → Si USE_SUPABASE=true  → llama a Supabase
-   → Si USE_SUPABASE=false → usa localStorage como fallback
+   SECCIÓN 0.5 — AUTENTICACIÓN
 ═══════════════════════════════════════════════════ */
 
-// ── LocalStorage helpers (fallback) ─────────────────────────
+let currentUser = null;
+let isLoginMode = true; // true = login, false = register
+
+function showAuth() {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app-header').style.display = 'none';
+  document.getElementById('app-main').style.display = 'none';
+}
+
+function showApp(user) {
+  currentUser = user;
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-header').style.display = 'block';
+  document.getElementById('app-main').style.display = 'block';
+  document.getElementById('user-email').textContent = user.email;
+}
+
+function toggleAuthMode() {
+  isLoginMode = !isLoginMode;
+  document.getElementById('auth-title').textContent = isLoginMode ? 'Inicia sesión' : 'Crear cuenta';
+  document.getElementById('auth-subtitle').textContent = isLoginMode
+    ? 'Accede a tu planificador de comidas'
+    : 'Regístrate para empezar a planificar';
+  document.getElementById('btn-auth-submit').textContent = isLoginMode ? 'Iniciar sesión' : 'Registrarse';
+  document.getElementById('auth-toggle-text').textContent = isLoginMode ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?';
+  document.getElementById('btn-auth-toggle').textContent = isLoginMode ? 'Regístrate' : 'Inicia sesión';
+  document.getElementById('auth-message').style.display = 'none';
+  document.getElementById('auth-password').placeholder = isLoginMode ? 'Tu contraseña' : 'Mínimo 6 caracteres';
+}
+
+function showAuthMessage(msg, isError = false) {
+  const el = document.getElementById('auth-message');
+  el.textContent = msg;
+  el.className = 'auth-message' + (isError ? ' auth-message-error' : '');
+  el.style.display = 'block';
+}
+
+async function handleAuthSubmit() {
+  const email    = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+
+  if (!email || !password) {
+    showAuthMessage('Rellena todos los campos', true);
+    return;
+  }
+
+  const btn = document.getElementById('btn-auth-submit');
+  btn.disabled = true;
+  btn.textContent = isLoginMode ? 'Entrando...' : 'Registrando...';
+
+  try {
+    if (isLoginMode) {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      // onAuthStateChange se encarga del resto
+    } else {
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) throw error;
+      // Si hay verificación por email, el usuario no tiene sesión aún
+      if (data.user && !data.session) {
+        showAuthMessage('¡Cuenta creada! Revisa tu correo para confirmar tu cuenta.');
+        isLoginMode = true;
+      }
+    }
+  } catch (err) {
+    const msg = err.message || 'Error desconocido';
+    const friendly = {
+      'Invalid login credentials': 'Email o contraseña incorrectos',
+      'User already registered': 'Este email ya está registrado',
+      'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres',
+      'Email rate limit exceeded': 'Demasiados intentos. Espera un momento.',
+    };
+    showAuthMessage(friendly[msg] || msg, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = isLoginMode ? 'Iniciar sesión' : 'Registrarse';
+  }
+}
+
+async function handleGoogleLogin() {
+  try {
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin }
+    });
+    if (error) throw error;
+  } catch (err) {
+    showAuthMessage(err.message || 'Error al conectar con Google', true);
+  }
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  currentUser = null;
+  document.getElementById('user-dropdown').style.display = 'none';
+  showAuth();
+}
+
+/* ═══════════════════════════════════════════════════
+   SECCIÓN 1 — CAPA DE BASE DE DATOS
+   Todas las queries filtran por user_id
+═══════════════════════════════════════════════════ */
+
 const LS = {
   get: (key, def = []) => { try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; } },
   set: (key, val)       => localStorage.setItem(key, JSON.stringify(val)),
@@ -50,204 +130,92 @@ const LS = {
 
 // ── RECETAS ──────────────────────────────────────────────────
 
-/**
- * Obtiene todas las recetas guardadas.
- * @returns {Promise<Array>} lista de objetos receta
- */
 async function getRecipes() {
-  if (USE_SUPABASE) {
-    const { data, error } = await sb.from('recipes').select('*').order('created_at');
-    if (error) throw error;
-    return data;
-  }
-  return LS.get('mp_recipes', []);
+  const { data, error } = await sb.from('recipes').select('*')
+    .eq('user_id', currentUser.id).order('created_at');
+  if (error) throw error;
+  return data;
 }
 
-/**
- * Guarda una nueva receta.
- * @param {{ id:string, name:string, ingredients:string[], notes:string }} recipe
- * @returns {Promise<object>} receta guardada
- */
 async function addRecipeToDB(recipe) {
-  if (USE_SUPABASE) {
-    const { data, error } = await sb.from('recipes').insert([recipe]).select().single();
-    if (error) throw error;
-    return data;
-  }
-  const list = LS.get('mp_recipes', []);
-  list.push(recipe);
-  LS.set('mp_recipes', list);
-  return recipe;
+  recipe.user_id = currentUser.id;
+  const { data, error } = await sb.from('recipes').insert([recipe]).select().single();
+  if (error) throw error;
+  return data;
 }
 
-/**
- * Actualiza una receta existente por su id.
- * @param {string} id
- * @param {{ name?:string, ingredients?:string[], notes?:string }} changes
- * @returns {Promise<object>} receta actualizada
- */
 async function updateRecipeInDB(id, changes) {
-  if (USE_SUPABASE) {
-    const { data, error } = await sb.from('recipes').update(changes).eq('id', id).select().single();
-    if (error) throw error;
-    return data;
-  }
-  const list = LS.get('mp_recipes', []);
-  const idx  = list.findIndex(r => r.id === id);
-  if (idx === -1) throw new Error('Receta no encontrada');
-  list[idx] = { ...list[idx], ...changes };
-  LS.set('mp_recipes', list);
-  return list[idx];
+  const { data, error } = await sb.from('recipes').update(changes)
+    .eq('id', id).eq('user_id', currentUser.id).select().single();
+  if (error) throw error;
+  return data;
 }
 
-/**
- * Elimina una receta por su id.
- * @param {string} id
- * @returns {Promise<void>}
- */
 async function deleteRecipeFromDB(id) {
-  if (USE_SUPABASE) {
-    const { error } = await sb.from('recipes').delete().eq('id', id);
-    if (error) throw error;
-    return;
-  }
-  const list = LS.get('mp_recipes', []).filter(r => r.id !== id);
-  LS.set('mp_recipes', list);
+  const { error } = await sb.from('recipes').delete()
+    .eq('id', id).eq('user_id', currentUser.id);
+  if (error) throw error;
 }
 
 // ── MENÚ SEMANAL ─────────────────────────────────────────────
 
-/**
- * Obtiene los platos asignados a la semana indicada.
- * @param {number} week  1-4
- * @returns {Promise<Array>} lista de {id, week, day, meal_type, recipe_id}
- */
 async function getMenuItems(week) {
-  if (USE_SUPABASE) {
-    const { data, error } = await sb.from('menu_items').select('*').eq('week', week);
-    if (error) throw error;
-    return data;
-  }
-  return LS.get(`mp_menu_w${week}`, []);
+  const { data, error } = await sb.from('menu_items').select('*')
+    .eq('user_id', currentUser.id).eq('week', week);
+  if (error) throw error;
+  return data;
 }
 
-/**
- * Asigna un plato a un slot del menú (o lo actualiza si ya existía).
- * @param {{ id:string, week:number, day:string, meal_type:string, recipe_id:string }} item
- * @returns {Promise<object>}
- */
 async function setMenuItemInDB(item) {
-  if (USE_SUPABASE) {
-    // Borrar slot existente y luego insertar
-    await sb.from('menu_items').delete()
-      .eq('week', item.week).eq('day', item.day).eq('meal_type', item.meal_type);
-    const { data, error } = await sb.from('menu_items').insert([item]).select().single();
-    if (error) throw error;
-    return data;
-  }
-  const key  = `mp_menu_w${item.week}`;
-  const list = LS.get(key, []);
-  const idx  = list.findIndex(m => m.day === item.day && m.meal_type === item.meal_type);
-  if (idx === -1) list.push(item); else list[idx] = item;
-  LS.set(key, list);
-  return item;
+  item.user_id = currentUser.id;
+  // Borrar slot existente, luego insertar
+  await sb.from('menu_items').delete()
+    .eq('user_id', currentUser.id)
+    .eq('week', item.week).eq('day', item.day).eq('meal_type', item.meal_type);
+  const { data, error } = await sb.from('menu_items').insert([item]).select().single();
+  if (error) throw error;
+  return data;
 }
 
-/**
- * Elimina el plato de un slot (deja el hueco vacío).
- * @param {string} id  id del menu_item
- * @param {number} week
- * @returns {Promise<void>}
- */
 async function clearMenuItemInDB(id, week) {
-  if (USE_SUPABASE) {
-    const { error } = await sb.from('menu_items').delete().eq('id', id);
-    if (error) throw error;
-    return;
-  }
-  const key  = `mp_menu_w${week}`;
-  const list = LS.get(key, []).filter(m => m.id !== id);
-  LS.set(key, list);
+  const { error } = await sb.from('menu_items').delete()
+    .eq('id', id).eq('user_id', currentUser.id);
+  if (error) throw error;
 }
 
 // ── LISTA DE LA COMPRA ────────────────────────────────────────
 
-/**
- * Obtiene todos los items de la lista de la compra.
- * @returns {Promise<Array>} lista de {id, name, done}
- */
 async function getShoppingList() {
-  if (USE_SUPABASE) {
-    const { data, error } = await sb.from('shopping_list').select('*').order('created_at');
-    if (error) throw error;
-    return data;
-  }
-  return LS.get('mp_shopping', []);
+  const { data, error } = await sb.from('shopping_list').select('*')
+    .eq('user_id', currentUser.id).order('created_at');
+  if (error) throw error;
+  return data;
 }
 
-/**
- * Añade un producto a la lista de la compra.
- * @param {{ id:string, name:string, done:boolean }} item
- * @returns {Promise<object>}
- */
 async function addShoppingItemToDB(item) {
-  if (USE_SUPABASE) {
-    const { data, error } = await sb.from('shopping_list').insert([item]).select().single();
-    if (error) throw error;
-    return data;
-  }
-  const list = LS.get('mp_shopping', []);
-  list.push(item);
-  LS.set('mp_shopping', list);
-  return item;
+  item.user_id = currentUser.id;
+  const { data, error } = await sb.from('shopping_list').insert([item]).select().single();
+  if (error) throw error;
+  return data;
 }
 
-/**
- * Actualiza el estado (done) de un producto.
- * @param {string} id
- * @param {boolean} done
- * @returns {Promise<object>}
- */
 async function updateShoppingItemInDB(id, done) {
-  if (USE_SUPABASE) {
-    const { data, error } = await sb.from('shopping_list').update({ done }).eq('id', id).select().single();
-    if (error) throw error;
-    return data;
-  }
-  const list = LS.get('mp_shopping', []);
-  const idx  = list.findIndex(i => i.id === id);
-  if (idx !== -1) list[idx].done = done;
-  LS.set('mp_shopping', list);
-  return list[idx];
+  const { data, error } = await sb.from('shopping_list').update({ done })
+    .eq('id', id).eq('user_id', currentUser.id).select().single();
+  if (error) throw error;
+  return data;
 }
 
-/**
- * Elimina un producto de la lista.
- * @param {string} id
- * @returns {Promise<void>}
- */
 async function deleteShoppingItemFromDB(id) {
-  if (USE_SUPABASE) {
-    const { error } = await sb.from('shopping_list').delete().eq('id', id);
-    if (error) throw error;
-    return;
-  }
-  const list = LS.get('mp_shopping', []).filter(i => i.id !== id);
-  LS.set('mp_shopping', list);
+  const { error } = await sb.from('shopping_list').delete()
+    .eq('id', id).eq('user_id', currentUser.id);
+  if (error) throw error;
 }
 
-/**
- * Elimina todos los productos marcados como "done" (en el carrito).
- * @returns {Promise<void>}
- */
 async function clearCartFromDB() {
-  if (USE_SUPABASE) {
-    const { error } = await sb.from('shopping_list').delete().eq('done', true);
-    if (error) throw error;
-    return;
-  }
-  const list = LS.get('mp_shopping', []).filter(i => !i.done);
-  LS.set('mp_shopping', list);
+  const { error } = await sb.from('shopping_list').delete()
+    .eq('user_id', currentUser.id).eq('done', true);
+  if (error) throw error;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -255,13 +223,12 @@ async function clearCartFromDB() {
 ═══════════════════════════════════════════════════ */
 
 const AppState = {
-  activeWeek:    1,          // semana activa (1-4)
-  currentView:   'menu',     // 'menu' | 'recetas' | 'lista'
-  recipes:       [],         // Array<{ id, name, ingredients[], notes }>
-  menuItems:     [],         // Array<{ id, week, day, meal_type, recipe_id }>
-  shoppingList:  [],         // Array<{ id, name, done }>
-  // contexto temporal para el modal de selección de receta
-  selectingSlot: null,       // { day, meal_type, existingId }
+  activeWeek:    1,
+  currentView:   'menu',
+  recipes:       [],
+  menuItems:     [],
+  shoppingList:  [],
+  selectingSlot: null,
 };
 
 const DAYS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
@@ -301,8 +268,6 @@ function getRecipeById(id) {
 /* ═══════════════════════════════════════════════════
    SECCIÓN 4 — CAPA DE RENDER
 ═══════════════════════════════════════════════════ */
-
-// ── 4.1 MENÚ SEMANAL ─────────────────────────────────────────
 
 function renderMenu() {
   const grid = document.getElementById('week-grid');
@@ -348,7 +313,6 @@ function renderMenu() {
     grid.appendChild(card);
   });
 
-  // Listeners en slots
   grid.querySelectorAll('.meal-slot').forEach(slot => {
     slot.addEventListener('click', () => openSelectRecipeModal(
       slot.dataset.day,
@@ -357,8 +321,6 @@ function renderMenu() {
     ));
   });
 }
-
-// ── 4.2 RECETAS ───────────────────────────────────────────────
 
 function renderRecipes(filter = '') {
   const grid  = document.getElementById('recipes-grid');
@@ -412,22 +374,17 @@ function renderRecipes(filter = '') {
   });
 }
 
-// ── 4.3 LISTA DE LA COMPRA ────────────────────────────────────
-
 function renderShoppingList() {
   const pending  = AppState.shoppingList.filter(i => !i.done);
   const inCart   = AppState.shoppingList.filter(i => i.done);
 
-  // Contadores
   document.getElementById('pendientes-count').textContent = pending.length;
   document.getElementById('carrito-count').textContent    = inCart.length;
 
-  // Badge header
   const badge = document.getElementById('lista-badge');
   badge.textContent = pending.length;
   badge.style.display = pending.length > 0 ? 'grid' : 'none';
 
-  // Pendientes
   const pendEl  = document.getElementById('list-pendientes');
   const pendEmp = document.getElementById('pendientes-empty');
   pendEl.innerHTML = '';
@@ -438,7 +395,6 @@ function renderShoppingList() {
     pending.forEach(item => pendEl.appendChild(createListItemEl(item)));
   }
 
-  // En el carrito
   const cartEl  = document.getElementById('list-carrito');
   const cartEmp = document.getElementById('carrito-empty');
   cartEl.innerHTML = '';
@@ -471,8 +427,6 @@ function createListItemEl(item) {
 /* ═══════════════════════════════════════════════════
    SECCIÓN 5 — MODALES
 ═══════════════════════════════════════════════════ */
-
-// ── 5.1 Modal: Seleccionar receta para el menú ───────────────
 
 function openSelectRecipeModal(day, mealType, existingItemId) {
   AppState.selectingSlot = { day, meal_type: mealType, existingId: existingItemId };
@@ -522,7 +476,6 @@ async function handleSelectRecipeForSlot(recipeId) {
   };
   try {
     await setMenuItemInDB(item);
-    // Actualizar estado local
     const idx = AppState.menuItems.findIndex(
       m => m.day === day && m.meal_type === meal_type
     );
@@ -552,7 +505,7 @@ async function handleClearSlot() {
   }
 }
 
-// ── 5.2 Modal: Nueva / Editar receta ────────────────────────
+// ── Modal: Nueva / Editar receta ────────────────────────
 
 let tempIngredients = [];
 
@@ -598,7 +551,6 @@ function addTempIngredient() {
   const input = document.getElementById('ingredient-input');
   const raw   = input.value.trim();
   if (!raw) return;
-  // Permite introducir varios separados por coma
   raw.split(',').map(s => s.trim()).filter(Boolean).forEach(s => {
     if (!tempIngredients.includes(s)) tempIngredients.push(s);
   });
@@ -637,12 +589,7 @@ async function handleDeleteRecipe(id) {
   try {
     await deleteRecipeFromDB(id);
     AppState.recipes = AppState.recipes.filter(r => r.id !== id);
-    // También quitamos del menú
     AppState.menuItems = AppState.menuItems.filter(m => m.recipe_id !== id);
-    for (let w = 1; w <= 4; w++) {
-      const list = LS.get(`mp_menu_w${w}`, []).filter(m => m.recipe_id !== id);
-      LS.set(`mp_menu_w${w}`, list);
-    }
     renderRecipes(document.getElementById('receta-search').value);
     renderMenu();
     showToast('Receta eliminada');
@@ -712,11 +659,6 @@ async function handleClearCart() {
   }
 }
 
-/**
- * Lee los platos de la semana activa,
- * extrae todos sus ingredientes y los añade a la lista
- * eliminando duplicados (case-insensitive) con los ya existentes.
- */
 async function handleCargarIngredientes() {
   const week = AppState.activeWeek;
   const weekItems = AppState.menuItems.filter(m => m.week === week);
@@ -725,7 +667,6 @@ async function handleCargarIngredientes() {
     return;
   }
 
-  // Recoger todos los ingredientes de las recetas del menú
   const allIngredients = [];
   weekItems.forEach(mi => {
     const recipe = getRecipeById(mi.recipe_id);
@@ -737,7 +678,6 @@ async function handleCargarIngredientes() {
     return;
   }
 
-  // Eliminar duplicados considerando lo que ya está en lista
   const existing = new Set(
     AppState.shoppingList.map(i => i.name.toLowerCase().trim())
   );
@@ -749,7 +689,6 @@ async function handleCargarIngredientes() {
     return;
   }
 
-  // Añadir a la DB y al estado
   try {
     for (const name of toAdd) {
       const item = { id: uid(), name, done: false };
@@ -770,13 +709,9 @@ async function handleCargarIngredientes() {
 
 function switchView(viewName) {
   AppState.currentView = viewName;
-
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${viewName}`).classList.add('active');
-
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewName));
-
-  // La barra de semana sólo es visible en menú
   document.getElementById('week-bar').style.display =
     viewName === 'menu' ? 'block' : 'none';
 }
@@ -799,9 +734,8 @@ async function switchWeek(week) {
    SECCIÓN 8 — INICIALIZACIÓN
 ═══════════════════════════════════════════════════ */
 
-async function init() {
+async function initApp() {
   try {
-    // Cargar datos iniciales en paralelo
     const [recipes, menuItems, shoppingList] = await Promise.all([
       getRecipes(),
       getMenuItems(AppState.activeWeek),
@@ -814,45 +748,42 @@ async function init() {
     console.error('Error al inicializar datos:', e);
   }
 
-  // Render inicial
   renderMenu();
   renderRecipes();
   renderShoppingList();
   switchView('menu');
+}
 
-  // ── Listeners de navegación ────────────────────────────────
-  document.querySelectorAll('.nav-btn').forEach(btn =>
+function bindListeners() {
+  // Navegación
+  document.querySelectorAll('.nav-btn[data-view]').forEach(btn =>
     btn.addEventListener('click', () => switchView(btn.dataset.view))
   );
-
   document.querySelectorAll('.week-tab').forEach(tab =>
     tab.addEventListener('click', () => switchWeek(Number(tab.dataset.week)))
   );
 
-  // ── Listeners: Recetas ─────────────────────────────────────
+  // Recetas
   document.getElementById('btn-nueva-receta').addEventListener('click', () => openRecipeForm());
-
   document.getElementById('receta-search').addEventListener('input', e =>
     renderRecipes(e.target.value)
   );
-
   document.getElementById('btn-add-ingredient').addEventListener('click', addTempIngredient);
   document.getElementById('ingredient-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); addTempIngredient(); }
   });
-
   document.getElementById('btn-save-recipe').addEventListener('click', handleSaveRecipe);
   document.getElementById('btn-cancel-recipe').addEventListener('click', closeRecipeForm);
   document.getElementById('close-recipe-form').addEventListener('click', closeRecipeForm);
 
-  // ── Listeners: Modal selección receta ────────────────────────
+  // Modal selección
   document.getElementById('close-select-recipe').addEventListener('click', closeSelectRecipeModal);
   document.getElementById('btn-clear-slot').addEventListener('click', handleClearSlot);
   document.getElementById('modal-recipe-search').addEventListener('input', e =>
     renderModalRecipeList(e.target.value)
   );
 
-  // ── Listeners: Lista de la compra ─────────────────────────
+  // Lista
   document.getElementById('btn-add-producto').addEventListener('click', handleAddProduct);
   document.getElementById('nuevo-producto').addEventListener('keydown', e => {
     if (e.key === 'Enter') handleAddProduct();
@@ -860,15 +791,13 @@ async function init() {
   document.getElementById('btn-vaciar').addEventListener('click', handleClearCart);
   document.getElementById('btn-cargar-semana').addEventListener('click', handleCargarIngredientes);
 
-  // ── Cerrar modales al hacer clic fuera ──────────────────────
+  // Cerrar modales
   document.getElementById('modal-select-recipe').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeSelectRecipeModal();
   });
   document.getElementById('modal-recipe-form').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeRecipeForm();
   });
-
-  // ── Tecla Escape cierra modales ────────────────────────────
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       closeSelectRecipeModal();
@@ -876,71 +805,42 @@ async function init() {
     }
   });
 
-  // ── Datos de muestra si la app está vacía ──────────────────
-  if (AppState.recipes.length === 0) loadSampleData();
-}
+  // Auth
+  document.getElementById('btn-auth-submit').addEventListener('click', handleAuthSubmit);
+  document.getElementById('auth-email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('auth-password').focus();
+  });
+  document.getElementById('auth-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleAuthSubmit();
+  });
+  document.getElementById('btn-google').addEventListener('click', handleGoogleLogin);
+  document.getElementById('btn-auth-toggle').addEventListener('click', toggleAuthMode);
 
-/* ═══════════════════════════════════════════════════
-   SECCIÓN 9 — DATOS DE MUESTRA (DEMO)
-   Se cargan solo si no hay recetas guardadas.
-   Puedes borrar este bloque una vez tengas datos reales.
-═══════════════════════════════════════════════════ */
-
-async function loadSampleData() {
-  const sampleRecipes = [
-    {
-      id: uid(),
-      name: 'Pastel de pastanaga sin gluten y sin leche',
-      ingredients: ['Zanahorias', 'Huevos', 'Harina sin gluten', 'Aceite vegetal', 'Azúcar', 'Bicarbonato', 'Canela'],
-      notes: 'Horno a 180°C durante 35 min.',
-    },
-    {
-      id: uid(),
-      name: 'Arroz con verduras',
-      ingredients: ['Arroz', 'Pimiento', 'Cebolla', 'Zanahoria', 'Aceite de oliva', 'Caldo de verduras'],
-      notes: '',
-    },
-    {
-      id: uid(),
-      name: 'Lentejas estofadas',
-      ingredients: ['Lentejas', 'Patata', 'Zanahoria', 'Cebolla', 'Tomate', 'Pimentón ahumado', 'Aceite de oliva'],
-      notes: 'Cocer 30 min en olla normal.',
-    },
-  ];
-
-  for (const r of sampleRecipes) {
-    await addRecipeToDB(r);
-    AppState.recipes.push(r);
-  }
-
-  // Asignar el primer plato al Lunes comida semana 1
-  const item = {
-    id: uid(),
-    week: 1,
-    day: 'Lunes',
-    meal_type: 'comida',
-    recipe_id: sampleRecipes[0].id,
-  };
-  await setMenuItemInDB(item);
-  AppState.menuItems.push(item);
-
-  // Lista de muestra
-  const shopItems = [
-    { id: uid(), name: 'Zanahorias', done: false },
-    { id: uid(), name: 'Huevos',     done: false },
-    { id: uid(), name: 'Aceite vegetal', done: false },
-    { id: uid(), name: 'Harina sin gluten', done: true },
-    { id: uid(), name: 'Azúcar',     done: true },
-  ];
-  for (const si of shopItems) {
-    await addShoppingItemToDB(si);
-    AppState.shoppingList.push(si);
-  }
-
-  renderMenu();
-  renderRecipes();
-  renderShoppingList();
+  // User menu
+  document.getElementById('btn-user-menu').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const dd = document.getElementById('user-dropdown');
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+  });
+  document.addEventListener('click', () => {
+    document.getElementById('user-dropdown').style.display = 'none';
+  });
+  document.getElementById('user-dropdown').addEventListener('click', e => e.stopPropagation());
+  document.getElementById('btn-logout').addEventListener('click', handleLogout);
 }
 
 // ── Arranque ──────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', init);
+
+document.addEventListener('DOMContentLoaded', () => {
+  bindListeners();
+
+  // Escuchar cambios de sesión
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      showApp(session.user);
+      await initApp();
+    } else {
+      showAuth();
+    }
+  });
+});
