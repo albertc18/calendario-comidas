@@ -138,11 +138,10 @@ async function getMenuItems(week) {
  */
 async function setMenuItemInDB(item) {
   if (USE_SUPABASE) {
-    // Upsert: si ya existe ese (week, day, meal_type) lo reemplaza
-    const { data, error } = await supabase
-      .from('menu_items')
-      .upsert([item], { onConflict: 'week,day,meal_type' })
-      .select().single();
+    // Borrar slot existente y luego insertar
+    await sb.from('menu_items').delete()
+      .eq('week', item.week).eq('day', item.day).eq('meal_type', item.meal_type);
+    const { data, error } = await sb.from('menu_items').insert([item]).select().single();
     if (error) throw error;
     return data;
   }
