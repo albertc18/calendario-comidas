@@ -29,9 +29,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const USE_SUPABASE    = true;                                // ← cambia a true cuando estés listo
 
 // Inicialización del cliente (se activa solo si USE_SUPABASE = true)
-let supabase = null;
+let sb = null;
 if (USE_SUPABASE && typeof window.supabase !== 'undefined') {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -56,7 +56,7 @@ const LS = {
  */
 async function getRecipes() {
   if (USE_SUPABASE) {
-    const { data, error } = await supabase.from('recipes').select('*').order('created_at');
+    const { data, error } = await sb.from('recipes').select('*').order('created_at');
     if (error) throw error;
     return data;
   }
@@ -70,7 +70,7 @@ async function getRecipes() {
  */
 async function addRecipeToDB(recipe) {
   if (USE_SUPABASE) {
-    const { data, error } = await supabase.from('recipes').insert([recipe]).select().single();
+    const { data, error } = await sb.from('recipes').insert([recipe]).select().single();
     if (error) throw error;
     return data;
   }
@@ -88,7 +88,7 @@ async function addRecipeToDB(recipe) {
  */
 async function updateRecipeInDB(id, changes) {
   if (USE_SUPABASE) {
-    const { data, error } = await supabase.from('recipes').update(changes).eq('id', id).select().single();
+    const { data, error } = await sb.from('recipes').update(changes).eq('id', id).select().single();
     if (error) throw error;
     return data;
   }
@@ -107,7 +107,7 @@ async function updateRecipeInDB(id, changes) {
  */
 async function deleteRecipeFromDB(id) {
   if (USE_SUPABASE) {
-    const { error } = await supabase.from('recipes').delete().eq('id', id);
+    const { error } = await sb.from('recipes').delete().eq('id', id);
     if (error) throw error;
     return;
   }
@@ -124,7 +124,7 @@ async function deleteRecipeFromDB(id) {
  */
 async function getMenuItems(week) {
   if (USE_SUPABASE) {
-    const { data, error } = await supabase.from('menu_items').select('*').eq('week', week);
+    const { data, error } = await sb.from('menu_items').select('*').eq('week', week);
     if (error) throw error;
     return data;
   }
@@ -162,7 +162,7 @@ async function setMenuItemInDB(item) {
  */
 async function clearMenuItemInDB(id, week) {
   if (USE_SUPABASE) {
-    const { error } = await supabase.from('menu_items').delete().eq('id', id);
+    const { error } = await sb.from('menu_items').delete().eq('id', id);
     if (error) throw error;
     return;
   }
@@ -179,7 +179,7 @@ async function clearMenuItemInDB(id, week) {
  */
 async function getShoppingList() {
   if (USE_SUPABASE) {
-    const { data, error } = await supabase.from('shopping_list').select('*').order('created_at');
+    const { data, error } = await sb.from('shopping_list').select('*').order('created_at');
     if (error) throw error;
     return data;
   }
@@ -193,7 +193,7 @@ async function getShoppingList() {
  */
 async function addShoppingItemToDB(item) {
   if (USE_SUPABASE) {
-    const { data, error } = await supabase.from('shopping_list').insert([item]).select().single();
+    const { data, error } = await sb.from('shopping_list').insert([item]).select().single();
     if (error) throw error;
     return data;
   }
@@ -211,7 +211,7 @@ async function addShoppingItemToDB(item) {
  */
 async function updateShoppingItemInDB(id, done) {
   if (USE_SUPABASE) {
-    const { data, error } = await supabase.from('shopping_list').update({ done }).eq('id', id).select().single();
+    const { data, error } = await sb.from('shopping_list').update({ done }).eq('id', id).select().single();
     if (error) throw error;
     return data;
   }
@@ -229,7 +229,7 @@ async function updateShoppingItemInDB(id, done) {
  */
 async function deleteShoppingItemFromDB(id) {
   if (USE_SUPABASE) {
-    const { error } = await supabase.from('shopping_list').delete().eq('id', id);
+    const { error } = await sb.from('shopping_list').delete().eq('id', id);
     if (error) throw error;
     return;
   }
@@ -243,7 +243,7 @@ async function deleteShoppingItemFromDB(id) {
  */
 async function clearCartFromDB() {
   if (USE_SUPABASE) {
-    const { error } = await supabase.from('shopping_list').delete().eq('done', true);
+    const { error } = await sb.from('shopping_list').delete().eq('done', true);
     if (error) throw error;
     return;
   }
