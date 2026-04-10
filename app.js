@@ -834,12 +834,13 @@ function bindListeners() {
 document.addEventListener('DOMContentLoaded', () => {
   bindListeners();
 
+  // Limpiar el hash con tokens de OAuth de la URL
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    history.replaceState(null, '', window.location.pathname);
+  }
+
   // Escuchar cambios de sesión
   sb.auth.onAuthStateChange(async (event, session) => {
-    // Limpiar el hash con tokens de OAuth de la URL
-    if (window.location.hash && window.location.hash.includes('access_token')) {
-      history.replaceState(null, '', window.location.pathname);
-    }
     if (session?.user) {
       showApp(session.user);
       await initApp();
