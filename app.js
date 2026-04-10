@@ -734,7 +734,8 @@ async function switchWeek(week) {
    SECCIÓN 8 — INICIALIZACIÓN
 ═══════════════════════════════════════════════════ */
 
-async function initApp() {
+async function initApp(retries = 3) {
+  if (!currentUser) return;
   try {
     const [recipes, menuItems, shoppingList] = await Promise.all([
       getRecipes(),
@@ -746,6 +747,13 @@ async function initApp() {
     AppState.shoppingList = shoppingList;
   } catch (e) {
     console.error('Error al inicializar datos:', e);
+    if (retries > 0) {
+      console.log(`Reintentando... (${retries} intentos restantes)`);
+      await new Promise(r => setTimeout(r, 1000));
+      return initApp(retries - 1);
+    }
+    showToast('Error de conexión. Recarga la página.');
+    return;
   }
 
   renderMenu();
@@ -831,20 +839,37 @@ function bindListeners() {
 
 // ── Arranque ──────────────────────────────────────────────────
 
+let appInitialized = false;
+
 document.addEventListener('DOMContentLoaded', () => {
+  if (!sb) {
+    document.body.innerHTML = '<div style="padding:40px;text-align:center;font-family:sans-serif;color:#c0553a">Error: No se pudo conectar con Supabase.<br>Recarga la página.</div>';
+    return;
+  }
+
   bindListeners();
+
+  // Limpiar hash con tokens de OAuth
+  if (window.location.hash && window.location.hash.includes('access_token')) {
+    history.replaceState(null, '', window.location.pathname);
+  }
 
   // Escuchar cambios de sesión
   sb.auth.onAuthStateChange(async (event, session) => {
-    // Limpiar el hash con tokens de OAuth de la URL
-    if (window.location.hash && window.location.hash.includes('access_token')) {
-      history.replaceState(null, '', window.location.pathname);
-    }
     if (session?.user) {
       showApp(session.user);
-      await initApp();
+      if (!appInitialized) {
+        appInitialized = true;
+        await initApp();
+      }
     } else {
+      appInitialized = false;
+      AppState.recipes = [];
+      AppState.menuItems = [];
+      AppState.shoppingList = [];
       showAuth();
+    }
+  });
     }
   });
 });
